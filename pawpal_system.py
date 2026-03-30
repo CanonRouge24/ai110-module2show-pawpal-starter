@@ -9,6 +9,7 @@ import uuid
 # --- Enumerations ---
 
 class TaskType(Enum):
+    """Categorizes the kind of care activity a task represents."""
     WALK = "walk"
     FEEDING = "feeding"
     MEDICATION = "medication"
@@ -19,6 +20,7 @@ class TaskType(Enum):
 
 
 class Priority(Enum):
+    """Numeric urgency levels used to order tasks during scheduling."""
     CRITICAL = 4
     HIGH = 3
     MEDIUM = 2
@@ -26,6 +28,7 @@ class Priority(Enum):
 
 
 class Frequency(Enum):
+    """Recurrence cadence for a task."""
     ONCE = "once"
     DAILY = "daily"
     WEEKLY = "weekly"
@@ -36,12 +39,14 @@ class Frequency(Enum):
 
 @dataclass
 class TimeWindow:
+    """Represents a contiguous block of time during which the owner is available."""
     start_time: str  # e.g. "08:00"
     end_time: str    # e.g. "10:00"
 
 
 @dataclass
 class ScheduledTask:
+    """Pairs a Task with the pet, time slot, and rationale assigned by the scheduler."""
     task: Task
     pet_id: str         # which pet this task belongs to
     assigned_time: str  # e.g. "09:00"
@@ -65,6 +70,7 @@ def _minutes_to_time(minutes: int) -> str:
 
 @dataclass
 class Task:
+    """A single care action to be performed for a pet, with scheduling metadata."""
     id: str
     name: str
     type: TaskType
@@ -77,9 +83,11 @@ class Task:
     is_completed: bool = False
 
     def mark_complete(self) -> None:
+        """Mark this task as completed."""
         self.is_completed = True
 
     def edit(self, updates: dict) -> None:
+        """Update any task fields supplied in the updates dict."""
         for key, value in updates.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -99,6 +107,7 @@ class Task:
 
 @dataclass
 class Pet:
+    """Stores a pet's profile, health records, and associated care tasks."""
     id: str
     name: str
     species: str
@@ -112,19 +121,23 @@ class Pet:
     tasks: list[Task] = field(default_factory=list)
 
     def add_task(self, task: Task) -> None:
+        """Assign a task to this pet and append it to the pet's task list."""
         task.pet_id = self.id
         self.tasks.append(task)
 
     def remove_task(self, task_id: str) -> None:
+        """Delete the task with the given ID from this pet's task list."""
         self.tasks = [t for t in self.tasks if t.id != task_id]
 
     def edit_task(self, task_id: str, updates: dict) -> None:
+        """Apply field updates to the task matching task_id."""
         for task in self.tasks:
             if task.id == task_id:
                 task.edit(updates)
                 return
 
     def get_tasks(self) -> list[Task]:
+        """Return a shallow copy of this pet's task list."""
         return list(self.tasks)
 
     def update_dates(self, field_name: str, new_date: date) -> None:
@@ -136,6 +149,7 @@ class Pet:
 
 @dataclass
 class Owner:
+    """Represents a pet owner with availability windows, preferences, and owned pets."""
     id: str
     name: str
     email: str
@@ -144,12 +158,15 @@ class Owner:
     pets: list[Pet] = field(default_factory=list)
 
     def add_pet(self, pet: Pet) -> None:
+        """Register a new pet under this owner."""
         self.pets.append(pet)
 
     def remove_pet(self, pet_id: str) -> None:
+        """Remove the pet with the given ID from this owner's roster."""
         self.pets = [p for p in self.pets if p.id != pet_id]
 
     def get_pets(self) -> list[Pet]:
+        """Return a shallow copy of this owner's pet list."""
         return list(self.pets)
 
     def get_all_tasks(self) -> list[Task]:
@@ -160,17 +177,21 @@ class Owner:
         return all_tasks
 
     def set_availability(self, windows: list[TimeWindow]) -> None:
+        """Replace the owner's availability with the provided time windows."""
         self.availability = windows
 
     def get_availability(self) -> list[TimeWindow]:
+        """Return a shallow copy of the owner's availability windows."""
         return list(self.availability)
 
     def get_preferences(self) -> list[str]:
+        """Return a shallow copy of the owner's scheduling preferences."""
         return list(self.preferences)
 
 
 @dataclass
 class Scheduler:
+    """Builds and manages a daily care plan for an owner's pets within their availability."""
     date: date
     owner: Owner
     pets: list[Pet] = field(default_factory=list)
@@ -178,6 +199,7 @@ class Scheduler:
     reasoning: str = ""
 
     def get_all_tasks_across_pets(self) -> list[Task]:
+        """Collect and return every task from all pets in this scheduler."""
         tasks: list[Task] = []
         for pet in self.pets:
             tasks.extend(pet.get_tasks())
@@ -192,6 +214,7 @@ class Scheduler:
         )
 
     def get_tasks_by_date(self, target_date: date) -> list[Task]:
+        """Return all tasks scheduled on the given date."""
         return [t for t in self.get_all_tasks_across_pets() if t.date == target_date]
 
     def generate_plan(self) -> list[ScheduledTask]:
@@ -264,15 +287,19 @@ class Scheduler:
         return self.plan
 
     def add_task(self, scheduled_task: ScheduledTask) -> None:
+        """Append a pre-built ScheduledTask directly to the current plan."""
         self.plan.append(scheduled_task)
 
     def remove_task(self, task_id: str) -> None:
+        """Remove the scheduled entry for the given task ID from the plan."""
         self.plan = [st for st in self.plan if st.task.id != task_id]
 
     def explain_reasoning(self) -> str:
+        """Return the human-readable reasoning string produced by the last generate_plan() call."""
         return self.reasoning or "No plan generated yet. Call generate_plan() first."
 
     def display_plan(self) -> str:
+        """Format the current plan as a time-sorted, human-readable string."""
         if not self.plan:
             return "No scheduled tasks. Call generate_plan() first."
         lines = [f"Schedule for {self.date}:"]
@@ -288,6 +315,7 @@ class Scheduler:
         return "\n".join(lines)
 
     def adjust_task(self, task_id: str, new_time: str) -> None:
+        """Manually override the assigned time for a task already in the plan."""
         for st in self.plan:
             if st.task.id == task_id:
                 st.assigned_time = new_time
