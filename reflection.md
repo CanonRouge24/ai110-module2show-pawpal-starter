@@ -37,6 +37,7 @@ Main objects needed for system:
     • Name
     • Available times
     • Preferences
+    • Pets
   Methods:
     • Setters for any attributes
     • Getters for the times and preferences
@@ -56,6 +57,7 @@ classDiagram
       +String email
       +List~TimeWindow~ availability
       +List~String~ preferences
+      +List~Pet~ pets
       +addPet(pet) void
       +removePet(petId) void
       +setAvailability(windows) void
